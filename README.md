@@ -15,7 +15,7 @@ Memory-MCP is a sophisticated memory-oriented knowledge graph management system 
 - **🌐 Flexible Transport**: Supports both local (stdin/stdout) and remote (HTTP/SSE) communication
 - **📊 Knowledge Graph**: Dynamic relationship discovery between memories
 - **🎛️ Admin Interface**: Web-based Gradio interface for system management
-- **📡 REST API**: Full HTTP API for integration with any application
+- **📡 MCP over HTTP**: FastMCP server with SSE support for web integration
 - **🐳 Docker Ready**: Easy deployment with Docker and Docker Compose
 
 ### 🎯 Use Cases
@@ -53,13 +53,13 @@ python server.py --mcp
 python server.py
 ```
 
-#### 2. REST API Server
+#### 2. FastMCP HTTP Server
 ```bash
-# Run HTTP REST API server
+# Run FastMCP HTTP server (MCP over HTTP with SSE)
 python server.py --rest
 
-# Access API documentation at:
-# http://localhost:8080/docs
+# Server runs at:
+# http://localhost:8080/mcp
 ```
 
 #### 3. Admin Interface  
@@ -73,7 +73,7 @@ python server.py --admin
 
 #### 4. All Services
 ```bash
-# Run both REST API and admin interface
+# Run both FastMCP HTTP and admin interface
 python server.py --all
 ```
 
@@ -129,35 +129,33 @@ The MCP server provides these tools:
 - `get_knowledge_overview` - Get an overview of stored knowledge
 - `exhaustive_search` - Perform comprehensive search across all memories
 
-### REST API Endpoints
+### MCP Tools & Resources
 
-- `POST /api/v1/memory` - Store a new memory
-- `GET /api/v1/memory/search` - Search for memories  
-- `GET /api/v1/memory/knowledge` - Get knowledge overview
-- `GET /api/v1/memory/{id}` - Retrieve specific memory by ID
-- `GET /api/v1/memory/search/exhaustive` - Perform exhaustive search
-- `GET /api/v1/health` - Health check endpoint
+The server provides the following MCP tools:
+- `store_memory` - Store a new memory with optional context
+- `query_memories` - Search for memories based on content  
+- `recall_memory` - Retrieve a specific memory by ID
+- `get_knowledge_overview` - Get overview of stored knowledge
+- `exhaustive_search` - Perform comprehensive search across all memories
 
-### Example API Usage
+And these MCP resources:
+- `memory://health` - System health status
+- `memory://overview` - Knowledge base overview  
+- `memory://memory/{id}` - Individual memory by ID
+
+### FastMCP HTTP Access
+
+When running in HTTP mode, the server provides MCP protocol over HTTP with SSE support:
 
 ```bash
-# Store a memory
-curl -X POST http://localhost:8080/api/v1/memory \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "Meeting with Alice about Q4 planning", 
-    "context": {
-      "project": "Q4 Strategy",
-      "type": "meeting", 
-      "participants": ["Alice", "Bob"]
-    }
-  }'
+# MCP server endpoint
+http://localhost:8080/mcp
 
-# Search memories
-curl "http://localhost:8080/api/v1/memory/search?q=Alice&limit=10"
-
-# Get health status
-curl http://localhost:8080/api/v1/health
+# The server implements the full MCP protocol including:
+# - Tools for memory operations
+# - Resources for data access  
+# - Prompts for context generation
+# - Server-Sent Events for real-time communication
 ```
 
 ## ⚙️ Configuration
@@ -218,11 +216,12 @@ memory = await memory_core.recall_memory(memory_id)
 
 ## 🧰 Technology Stack
 
-- **Backend**: Python with FastAPI and asyncio
+- **Backend**: Python with FastMCP and asyncio
 - **Database**: SQLite (with support for other databases)  
 - **AI/ML**: Sentence transformers for embeddings, OpenAI integration
 - **Admin Interface**: Gradio for web-based management
-- **Protocol**: Model Context Protocol (MCP) for AI integration
+- **Protocol**: Model Context Protocol (MCP) with FastMCP framework
+- **Transport**: HTTP with Server-Sent Events (SSE) support
 - **Deployment**: Docker and Docker Compose ready
 
 ## 🔧 Development
@@ -236,7 +235,7 @@ python memory_core.py
 # Test MCP server  
 python mcp_server.py
 
-# Test REST API
+# Test FastMCP HTTP server
 python rest_api.py --test
 
 # Test admin interface
@@ -253,7 +252,7 @@ Memory-MCP/
 ├── server.py           # Main server entry point
 ├── memory_core.py      # Core memory management
 ├── mcp_server.py       # MCP protocol implementation  
-├── rest_api.py         # HTTP REST API server
+├── rest_api.py         # FastMCP HTTP server
 ├── gradio_admin.py     # Web admin interface
 ├── dreamer_ai.py       # Background AI processing
 ├── config.py           # Configuration management
@@ -267,7 +266,7 @@ Memory-MCP/
 ## 📚 Documentation
 
 - [Complete Specification](SPECIFICATION.md) - Detailed technical specification
-- [API Reference](http://localhost:8080/docs) - Interactive API documentation (when REST server is running)
+- [FastMCP Documentation](https://gofastmcp.com) - FastMCP framework documentation
 - [Examples](example_usage.py) - Comprehensive usage examples
 
 ## 🐳 Docker Deployment
@@ -305,8 +304,8 @@ docker run -d \
 Check system health:
 
 ```bash
-# Via REST API
-curl http://localhost:8080/api/v1/health
+# Via MCP tool (if using MCP client)
+# The server provides get_knowledge_overview tool for health monitoring
 
 # Via command line
 python -c "import asyncio; from memory_core import MemoryCore; print(asyncio.run(MemoryCore().get_health_status()))"
