@@ -35,7 +35,3 @@ services:
       - memory-mcp
     restart: unless-stopped
     profiles: ["with-proxy"]
-
-volumes:
-  memory_data:
-    driver: local

@@ -146,7 +146,7 @@ class DreamerAI:
             # Boost score for memories created within 24 hours
             if time_diff < 86400:  # 24 hours
                 score += 0.1
-        except:
+        except Exception:
             pass
         
         return min(score, 1.0)
@@ -189,8 +189,11 @@ class DreamerAI:
     async def _create_project_summary(self, project: str, memories: List[Dict[str, Any]]):
         """Create a summary memory for a project."""
         
-        # Check if summary already exists
-        existing_summaries = await self.memory_core.query_memories(f"Summary of {project}")
+        # Check if summary already exists using context-based search
+        existing_summaries = await self.memory_core.search_by_context({
+            "type": "summary",
+            "project": project
+        })
         if existing_summaries:
             return
         

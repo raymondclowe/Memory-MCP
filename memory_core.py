@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Any
 import json
-import sqlite3
+import aiosqlite
 import os
 from pathlib import Path
 
@@ -77,16 +77,23 @@ class MemoryDatabase:
     def __init__(self, db_path: str = "memory_graph.db"):
         self.db_path = db_path
         self.logger = structlog.get_logger().bind(component="database")
-        self._init_database()
+        # Database will be initialized on first use
+        self._initialized = False
     
-    def _init_database(self):
+    async def _ensure_initialized(self):
+        """Ensure the database is initialized."""
+        if not self._initialized:
+            await self._init_database()
+            self._initialized = True
+    
+    async def _init_database(self):
         """Initialize the SQLite database with required tables."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
+            async with aiosqlite.connect(self.db_path) as conn:
+                cursor = await conn.cursor()
                 
                 # Memory nodes table
-                cursor.execute("""
+                await cursor.execute("""
                     CREATE TABLE IF NOT EXISTS memory_nodes (
                         id TEXT PRIMARY KEY,
                         content TEXT NOT NULL,
@@ -100,7 +107,7 @@ class MemoryDatabase:
                 """)
                 
                 # Memory relationships table
-                cursor.execute("""
+                await cursor.execute("""
                     CREATE TABLE IF NOT EXISTS memory_relationships (
                         from_node_id TEXT,
                         to_node_id TEXT,
@@ -114,11 +121,11 @@ class MemoryDatabase:
                 """)
                 
                 # Indexes for performance
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_priority ON memory_nodes (priority_score DESC)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_accessed ON memory_nodes (last_accessed_at DESC)")
-                cursor.execute("CREATE INDEX IF NOT EXISTS idx_relationships_weight ON memory_relationships (weight DESC)")
+                await cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_priority ON memory_nodes (priority_score DESC)")
+                await cursor.execute("CREATE INDEX IF NOT EXISTS idx_nodes_accessed ON memory_nodes (last_accessed_at DESC)")
+                await cursor.execute("CREATE INDEX IF NOT EXISTS idx_relationships_weight ON memory_relationships (weight DESC)")
                 
-                conn.commit()
+                await conn.commit()
                 self.logger.info("Database initialized successfully")
                 
         except Exception as e:
@@ -127,10 +134,11 @@ class MemoryDatabase:
     
     async def store_memory(self, memory: MemoryNode) -> str:
         """Store a memory node in the database."""
+        await self._ensure_initialized()
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
+            async with aiosqlite.connect(self.db_path) as conn:
+                cursor = await conn.cursor()
+                await cursor.execute("""
                     INSERT INTO memory_nodes 
                     (id, content, context, created_at, last_accessed_at, access_count, priority_score, node_type)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -144,7 +152,7 @@ class MemoryDatabase:
                     memory.priority_score,
                     memory.node_type
                 ))
-                conn.commit()
+                await conn.commit()
                 
                 self.logger.info("Memory stored", memory_id=memory.id, content_length=len(memory.content))
                 return memory.id
@@ -155,21 +163,22 @@ class MemoryDatabase:
     
     async def get_memory(self, memory_id: str) -> Optional[MemoryNode]:
         """Retrieve a memory node by ID and update access statistics."""
+        await self._ensure_initialized()
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM memory_nodes WHERE id = ?", (memory_id,))
-                row = cursor.fetchone()
+            async with aiosqlite.connect(self.db_path) as conn:
+                cursor = await conn.cursor()
+                await cursor.execute("SELECT * FROM memory_nodes WHERE id = ?", (memory_id,))
+                row = await cursor.fetchone()
                 
                 if row:
                     # Update access statistics
                     now = datetime.now(timezone.utc)
-                    cursor.execute("""
+                    await cursor.execute("""
                         UPDATE memory_nodes 
                         SET last_accessed_at = ?, access_count = access_count + 1
                         WHERE id = ?
                     """, (now.isoformat(), memory_id))
-                    conn.commit()
+                    await conn.commit()
                     
                     memory = MemoryNode(
                         id=row[0],
@@ -192,19 +201,28 @@ class MemoryDatabase:
             raise
     
     async def search_memories(self, query: str, limit: int = 10) -> List[MemoryNode]:
-        """Search memories by content with priority ordering."""
+        """Search memories by content with priority ordering and improved JSON context search."""
+        await self._ensure_initialized()
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
+            async with aiosqlite.connect(self.db_path) as conn:
+                cursor = await conn.cursor()
+                
+                # Use improved search that handles JSON context more efficiently
+                # This searches content with LIKE and also checks if the query matches any JSON values
+                await cursor.execute("""
                     SELECT * FROM memory_nodes 
-                    WHERE content LIKE ? OR context LIKE ?
+                    WHERE content LIKE ? 
+                       OR EXISTS (
+                           SELECT 1 FROM json_each(context) 
+                           WHERE json_each.value LIKE ?
+                       )
                     ORDER BY priority_score DESC, last_accessed_at DESC
                     LIMIT ?
                 """, (f"%{query}%", f"%{query}%", limit))
                 
                 memories = []
-                for row in cursor.fetchall():
+                rows = await cursor.fetchall()
+                for row in rows:
                     memory = MemoryNode(
                         id=row[0],
                         content=row[1],
@@ -226,15 +244,18 @@ class MemoryDatabase:
     
     async def get_memory_stats(self) -> Dict[str, Any]:
         """Get database statistics for health checks."""
+        await self._ensure_initialized()
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
+            async with aiosqlite.connect(self.db_path) as conn:
+                cursor = await conn.cursor()
                 
-                cursor.execute("SELECT COUNT(*) FROM memory_nodes")
-                memory_count = cursor.fetchone()[0]
+                await cursor.execute("SELECT COUNT(*) FROM memory_nodes")
+                result = await cursor.fetchone()
+                memory_count = result[0]
                 
-                cursor.execute("SELECT COUNT(*) FROM memory_relationships")
-                relationship_count = cursor.fetchone()[0]
+                await cursor.execute("SELECT COUNT(*) FROM memory_relationships")
+                result = await cursor.fetchone()
+                relationship_count = result[0]
                 
                 return {
                     "memory_count": memory_count,
@@ -281,6 +302,50 @@ class MemoryCore:
             })
         
         return results
+    
+    async def search_by_context(self, context_filter: Dict[str, Any], limit: int = 10) -> List[Dict[str, Any]]:
+        """Search memories by context criteria."""
+        await self._ensure_initialized()
+        try:
+            async with aiosqlite.connect(self.db.db_path) as conn:
+                cursor = await conn.cursor()
+                
+                # Build dynamic WHERE clause for JSON context search
+                conditions = []
+                params = []
+                
+                for key, value in context_filter.items():
+                    conditions.append("json_extract(context, ?) = ?")
+                    params.extend([f'$.{key}', value])
+                
+                where_clause = " AND ".join(conditions) if conditions else "1=1"
+                
+                await cursor.execute(f"""
+                    SELECT * FROM memory_nodes 
+                    WHERE {where_clause}
+                    ORDER BY priority_score DESC, last_accessed_at DESC
+                    LIMIT ?
+                """, params + [limit])
+                
+                memories = []
+                rows = await cursor.fetchall()
+                for row in rows:
+                    memories.append({
+                        "id": row[0],
+                        "content": row[1],
+                        "context": json.loads(row[2]) if row[2] else {},
+                        "created_at": row[3],
+                        "last_accessed_at": row[4],
+                        "access_count": row[5],
+                        "priority_score": row[6],
+                        "node_type": row[7]
+                    })
+                
+                return memories
+                
+        except Exception as e:
+            self.logger.error("Failed to search by context", context_filter=context_filter, error=str(e))
+            raise
     
     async def recall_memory(self, memory_id: str) -> Optional[Dict[str, Any]]:
         """Recall a specific memory by ID."""

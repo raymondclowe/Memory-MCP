@@ -119,7 +119,7 @@ The system consists of three main components:
 
 ## 📡 API Reference
 
-### MCP Tools
+### MCP Tools & Resources
 
 The MCP server provides these tools:
 
@@ -129,19 +129,16 @@ The MCP server provides these tools:
 - `get_knowledge_overview` - Get an overview of stored knowledge
 - `exhaustive_search` - Perform comprehensive search across all memories
 
-### MCP Tools & Resources
-
-The server provides the following MCP tools:
-- `store_memory` - Store a new memory with optional context
-- `query_memories` - Search for memories based on content  
-- `recall_memory` - Retrieve a specific memory by ID
-- `get_knowledge_overview` - Get overview of stored knowledge
-- `exhaustive_search` - Perform comprehensive search across all memories
-
 And these MCP resources:
 - `memory://health` - System health status
 - `memory://overview` - Knowledge base overview  
 - `memory://memory/{id}` - Individual memory by ID
+
+### MCP Prompts
+
+The server also provides context-generation prompts:
+- `memory_context_prompt` - Generate contextual information for topics
+- `summarize_knowledge_prompt` - Create knowledge base summaries
 
 ### FastMCP HTTP Access
 

@@ -32,7 +32,7 @@ ENV MEMORY_DB_PATH=/app/data/memory_graph.db
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import asyncio; from memory_core import MemoryCore; asyncio.run(MemoryCore().get_health_status())" || exit 1
+    CMD python -c "import asyncio; from memory_core import MemoryCore; asyncio.run(MemoryCore('/app/data/memory_graph.db').get_health_status())" || exit 1
 
 # Default command (can be overridden)
 CMD ["python", "server.py", "--all"]
