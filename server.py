@@ -56,7 +56,17 @@ class MemoryMCPMain:
         
     def _setup_logging(self):
         """Configure structured logging."""
-        log_level = getattr(structlog.stdlib, self.config.log_level.upper(), structlog.stdlib.INFO)
+        import logging
+        
+        log_level_map = {
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL
+        }
+        
+        log_level = log_level_map.get(self.config.log_level.upper(), logging.INFO)
         
         structlog.configure(
             processors=[
@@ -74,8 +84,10 @@ class MemoryMCPMain:
             logger_factory=structlog.stdlib.LoggerFactory(),
             wrapper_class=structlog.stdlib.BoundLogger,
             cache_logger_on_first_use=True,
-            logger_level=log_level
         )
+        
+        # Set the root logger level
+        logging.getLogger().setLevel(log_level)
     
     def _setup_signal_handlers(self):
         """Set up signal handlers for graceful shutdown."""
