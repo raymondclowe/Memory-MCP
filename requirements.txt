@@ -1,9 +1,6 @@
-# Core MCP SDK
+# Core MCP SDK and FastMCP for HTTP SSE support
 mcp>=1.0.0
-
-# Web framework for REST API
-fastapi>=0.104.0
-uvicorn>=0.24.0
+fastmcp>=2.0.0
 
 # Admin interface
 gradio>=4.0.0

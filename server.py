@@ -36,7 +36,7 @@ import structlog
 from config import load_config
 from memory_core import MemoryCore
 from mcp_server import MCPMemoryServer
-from rest_api import RESTAPIServer
+from rest_api import FastMCPMemoryServer
 from gradio_admin import GradioAdminInterface
 
 logger = structlog.get_logger()
@@ -105,12 +105,12 @@ class MemoryMCPMain:
         server = MCPMemoryServer(self.config.db_path)
         await server.run_stdio()
     
-    async def run_rest_api(self):
-        """Run the REST API server."""
-        self.logger.info("Starting REST API server", host=self.config.host, port=self.config.port)
+    async def run_fastmcp_http(self):
+        """Run the FastMCP server with HTTP transport."""
+        self.logger.info("Starting FastMCP HTTP server", host=self.config.host, port=self.config.port)
         
-        server = RESTAPIServer(self.config.db_path)
-        await server.start_server(self.config.host, self.config.port)
+        server = FastMCPMemoryServer(self.config.db_path)
+        await server.run_http_async(self.config.host, self.config.port)
     
     def run_gradio_admin(self):
         """Run the Gradio admin interface."""
@@ -127,7 +127,7 @@ class MemoryMCPMain:
         )
     
     async def run_all_services(self):
-        """Run REST API and admin interface together."""
+        """Run FastMCP HTTP and admin interface together."""
         self.logger.info("Starting all services")
         
         # Start Gradio in a separate thread
@@ -137,8 +137,8 @@ class MemoryMCPMain:
         # Give Gradio time to start
         await asyncio.sleep(2)
         
-        # Start REST API in the main event loop
-        await self.run_rest_api()
+        # Start FastMCP HTTP in the main event loop
+        await self.run_fastmcp_http()
     
     def print_startup_info(self):
         """Print startup information."""
@@ -158,13 +158,13 @@ class MemoryMCPMain:
             print("   📡 MCP Server: stdio mode")
             print("   💡 Connect using MCP-compatible clients")
         elif mode == "rest":
-            print(f"   🌐 REST API: http://{self.config.host}:{self.config.port}")
-            print(f"   📖 Documentation: http://{self.config.host}:{self.config.port}/docs")
+            print(f"   🌐 FastMCP HTTP: http://{self.config.host}:{self.config.port}")
+            print(f"   📡 MCP over HTTP with SSE support")
         elif mode == "admin":
             print(f"   🎛️  Admin Interface: http://{self.config.gradio_host}:{self.config.gradio_port}")
         elif mode == "all":
-            print(f"   🌐 REST API: http://{self.config.host}:{self.config.port}")
-            print(f"   📖 API Docs: http://{self.config.host}:{self.config.port}/docs")
+            print(f"   🌐 FastMCP HTTP: http://{self.config.host}:{self.config.port}")
+            print(f"   📡 MCP over HTTP with SSE support")
             print(f"   🎛️  Admin Interface: http://{self.config.gradio_host}:{self.config.gradio_port}")
         
         print("="*60)
@@ -199,7 +199,7 @@ class MemoryMCPMain:
             if mode == "mcp":
                 await self.run_mcp_server()
             elif mode == "rest":
-                await self.run_rest_api()
+                await self.run_fastmcp_http()
             elif mode == "admin":
                 # Run in a thread since Gradio blocks
                 loop = asyncio.get_event_loop()
