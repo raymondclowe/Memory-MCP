@@ -4,18 +4,30 @@ An intelligent memory management server implementing the Model Context Protocol 
 
 ## Overview
 
-Memory-MCP is a sophisticated memory-oriented knowledge graph management system that stores, organizes, and retrieves memories, facts, instructions, and conclusions. It features a temporally-aware knowledge graph with an AI-powered "dreamer" process that discovers relationships and creates intelligent summaries.
+Memory-MCP is a sophisticated memory-oriented knowledge graph management system designed to store, organize, and retrieve memories, facts, instructions, discussions, and conclusions. It implements a temporally-aware knowledge graph that can be queried and extended by AI models and applications.
 
-## Key Features
+### 🌟 Key Features
 
-- **Intelligent Memory Storage**: Memories stored as nodes in a dynamic knowledge graph
-- **Temporal Awareness**: Smart prioritization based on access patterns and relevance
-- **AI-Powered Relationships**: Background "dreamer" discovers connections between memories
-- **Simple API**: Natural language-inspired commands for easy integration
-- **Flexible Transport**: Both local (stdin/stdout) and remote (HTTP/SSE) communication
-- **Knowledge Synthesis**: Automatic creation of summaries and abstractions
+- **🧠 Intelligent Memory Storage**: Stores memories as nodes in a knowledge graph with rich metadata
+- **⏰ Temporal Awareness**: Prioritizes memories based on recency of access and relevance  
+- **🤖 Background AI Processing**: "Dreamer" mode that discovers connections and creates summaries
+- **🔌 Simple Client Interface**: Intuitive commands for storing and retrieving memories
+- **🌐 Flexible Transport**: Supports both local (stdin/stdout) and remote (HTTP/SSE) communication
+- **📊 Knowledge Graph**: Dynamic relationship discovery between memories
+- **🎛️ Admin Interface**: Web-based Gradio interface for system management
+- **📡 REST API**: Full HTTP API for integration with any application
+- **🐳 Docker Ready**: Easy deployment with Docker and Docker Compose
 
-## Quick Start
+### 🎯 Use Cases
+
+- Personal AI assistants with long-term memory
+- Organizational knowledge management  
+- Research and note-taking systems
+- Context-aware chatbots
+- Documentation and insight discovery
+- Project tracking and workflow management
+
+## 🚀 Quick Start
 
 ### Installation
 
@@ -24,38 +36,65 @@ Memory-MCP is a sophisticated memory-oriented knowledge graph management system 
 git clone https://github.com/raymondclowe/Memory-MCP.git
 cd Memory-MCP
 
-# Install dependencies (implementation-specific)
-pip install -r requirements.txt  # Python
-# or
-npm install  # Node.js
+# Install dependencies
+pip install -r requirements.txt
+
+# Create sample configuration (optional)
+python server.py --create-env
 ```
 
 ### Basic Usage
 
+#### 1. MCP Server (Default)
 ```bash
-# Start the server
-python memory_server.py
-# or
-node memory_server.js
-
-# Store a memory
-curl -X POST http://localhost:8080/api/v1/memory \
-  -H "X-Memory-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"content": "Meeting with Alice about project X", "context": {"project": "X"}}'
-
-# Query memories
-curl "http://localhost:8080/api/v1/memory/search?q=Alice" \
-  -H "X-Memory-Key: your-api-key"
+# Run MCP server for stdio communication
+python server.py --mcp
+# or simply
+python server.py
 ```
 
-## Architecture
+#### 2. REST API Server
+```bash
+# Run HTTP REST API server
+python server.py --rest
+
+# Access API documentation at:
+# http://localhost:8080/docs
+```
+
+#### 3. Admin Interface  
+```bash
+# Run Gradio admin interface
+python server.py --admin
+
+# Access web interface at:
+# http://localhost:7860
+```
+
+#### 4. All Services
+```bash
+# Run both REST API and admin interface
+python server.py --all
+```
+
+### Docker Deployment
+
+```bash
+# Using Docker Compose (recommended)
+docker-compose up -d
+
+# Or build and run manually
+docker build -t memory-mcp .
+docker run -p 8080:8080 -p 7860:7860 -v ./data:/app/data memory-mcp
+```
+
+## 🏗️ Architecture
 
 The system consists of three main components:
 
-1. **Client Interface**: Handles natural language-inspired commands
-2. **Memory Core**: Manages the knowledge graph and memory operations
-3. **Dreamer AI**: Background processor that discovers relationships and creates summaries
+1. **Client Interface Layer**: Handles user commands and responses
+2. **Memory Management Core**: Manages the knowledge graph and memory operations  
+3. **Background Processor (Dreamer)**: Discovers relationships and creates summaries
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -70,7 +109,7 @@ The system consists of three main components:
                        └─────────────────┘
 ```
 
-## Core Commands
+## 🛠️ Core Commands
 
 - **Store Memory**: `I should remember (content) [context: (metadata)]`
 - **Query Memories**: `What do I remember about (query)?`
@@ -78,62 +117,223 @@ The system consists of three main components:
 - **Recall Memory**: `Recall memory (memory_id)`
 - **Deep Search**: `Search extensively for (query)`
 
-## Use Cases
+## 📡 API Reference
 
-- Personal AI assistants with long-term memory
-- Organizational knowledge management
-- Research and note-taking systems
-- Context-aware chatbots
-- Documentation and insight discovery
+### MCP Tools
 
-## Documentation
+The MCP server provides these tools:
 
-- [Complete Specification](SPECIFICATION.md) - Detailed technical specification
-- [API Reference](docs/api.md) - Complete API documentation
-- [Deployment Guide](docs/deployment.md) - Installation and configuration
-- [Development Guide](docs/development.md) - Contributing guidelines
+- `store_memory` - Store a new memory with optional context
+- `query_memories` - Search for memories based on content or context
+- `recall_memory` - Retrieve a specific memory by ID
+- `get_knowledge_overview` - Get an overview of stored knowledge
+- `exhaustive_search` - Perform comprehensive search across all memories
 
-## Configuration
+### REST API Endpoints
 
-Basic configuration via environment variables:
+- `POST /api/v1/memory` - Store a new memory
+- `GET /api/v1/memory/search` - Search for memories  
+- `GET /api/v1/memory/knowledge` - Get knowledge overview
+- `GET /api/v1/memory/{id}` - Retrieve specific memory by ID
+- `GET /api/v1/memory/search/exhaustive` - Perform exhaustive search
+- `GET /api/v1/health` - Health check endpoint
+
+### Example API Usage
 
 ```bash
-MEMORY_PORT=8080
-MEMORY_DB_TYPE=neo4j
-MEMORY_DB_URL=bolt://localhost:7687
-MEMORY_AI_PROVIDER=openai
-MEMORY_API_KEYS=your-api-key
+# Store a memory
+curl -X POST http://localhost:8080/api/v1/memory \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Meeting with Alice about Q4 planning", 
+    "context": {
+      "project": "Q4 Strategy",
+      "type": "meeting", 
+      "participants": ["Alice", "Bob"]
+    }
+  }'
+
+# Search memories
+curl "http://localhost:8080/api/v1/memory/search?q=Alice&limit=10"
+
+# Get health status
+curl http://localhost:8080/api/v1/health
 ```
 
-See [SPECIFICATION.md](SPECIFICATION.md) for complete configuration options.
+## ⚙️ Configuration
 
-## Contributing
+Configure via environment variables or `.env` file:
 
-We welcome contributions! Please see:
+```bash
+# Server Configuration
+MEMORY_HOST=0.0.0.0
+MEMORY_PORT=8080  
+MEMORY_LOG_LEVEL=INFO
 
-1. [Specification](SPECIFICATION.md) for technical details
-2. [Issues](https://github.com/raymondclowe/Memory-MCP/issues) for bugs and feature requests
-3. [Pull Requests](https://github.com/raymondclowe/Memory-MCP/pulls) for code contributions
+# Database Configuration  
+MEMORY_DB_PATH=memory_graph.db
 
-## Technology Stack
+# AI Configuration (optional)
+MEMORY_AI_PROVIDER=openai
+MEMORY_AI_API_KEY=your-openai-api-key
+MEMORY_AI_MODEL=gpt-3.5-turbo
 
-- **Graph Database**: Neo4j, TigerGraph, or custom in-memory graph
-- **AI/ML**: Embeddings, vector similarity, LLM integration
-- **Backend**: Python (FastAPI), Node.js (Express), or Go
-- **Transport**: HTTP REST API with SSE, stdin/stdout for local mode
+# Gradio Admin Interface
+MEMORY_GRADIO_HOST=0.0.0.0
+MEMORY_GRADIO_PORT=7860
 
-## License
+# Background Processing  
+MEMORY_DREAMER_ENABLED=true
+MEMORY_DREAMER_INTERVAL=300
+```
+
+## 🧪 Examples
+
+See `example_usage.py` for comprehensive examples:
+
+```bash
+python example_usage.py
+```
+
+### Basic Memory Operations
+
+```python
+from memory_core import MemoryCore
+
+# Initialize
+memory_core = MemoryCore("my_memory.db")
+
+# Store a memory
+memory_id = await memory_core.store_memory(
+    "Important project deadline is next Friday",
+    {"project": "Alpha", "type": "deadline", "urgency": "high"}
+)
+
+# Search memories  
+memories = await memory_core.query_memories("project deadline")
+
+# Recall specific memory
+memory = await memory_core.recall_memory(memory_id)
+```
+
+## 🧰 Technology Stack
+
+- **Backend**: Python with FastAPI and asyncio
+- **Database**: SQLite (with support for other databases)  
+- **AI/ML**: Sentence transformers for embeddings, OpenAI integration
+- **Admin Interface**: Gradio for web-based management
+- **Protocol**: Model Context Protocol (MCP) for AI integration
+- **Deployment**: Docker and Docker Compose ready
+
+## 🔧 Development
+
+### Running Tests
+
+```bash
+# Test core functionality
+python memory_core.py
+
+# Test MCP server  
+python mcp_server.py
+
+# Test REST API
+python rest_api.py --test
+
+# Test admin interface
+python gradio_admin.py --test
+
+# Test Dreamer AI
+python dreamer_ai.py
+```
+
+### Code Structure
+
+```
+Memory-MCP/
+├── server.py           # Main server entry point
+├── memory_core.py      # Core memory management
+├── mcp_server.py       # MCP protocol implementation  
+├── rest_api.py         # HTTP REST API server
+├── gradio_admin.py     # Web admin interface
+├── dreamer_ai.py       # Background AI processing
+├── config.py           # Configuration management
+├── example_usage.py    # Usage examples
+├── requirements.txt    # Python dependencies
+├── Dockerfile          # Docker configuration
+├── docker-compose.yml  # Docker Compose setup
+└── SPECIFICATION.md    # Detailed technical specification
+```
+
+## 📚 Documentation
+
+- [Complete Specification](SPECIFICATION.md) - Detailed technical specification
+- [API Reference](http://localhost:8080/docs) - Interactive API documentation (when REST server is running)
+- [Examples](example_usage.py) - Comprehensive usage examples
+
+## 🐳 Docker Deployment
+
+### Using Docker Compose (Recommended)
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services  
+docker-compose down
+```
+
+### Manual Docker
+
+```bash
+# Build image
+docker build -t memory-mcp .
+
+# Run with data persistence
+docker run -d \
+  -p 8080:8080 \
+  -p 7860:7860 \
+  -v ./data:/app/data \
+  -e MEMORY_DB_PATH=/app/data/memory_graph.db \
+  memory-mcp
+```
+
+## 🔍 Health Monitoring
+
+Check system health:
+
+```bash
+# Via REST API
+curl http://localhost:8080/api/v1/health
+
+# Via command line
+python -c "import asyncio; from memory_core import MemoryCore; print(asyncio.run(MemoryCore().get_health_status()))"
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)  
+5. Open a Pull Request
+
+## 📄 License
 
 [MIT License](LICENSE) - see LICENSE file for details.
 
-## Support
+## 🆘 Support
 
-- [GitHub Issues](https://github.com/raymondclowe/Memory-MCP/issues)
-- [Discussions](https://github.com/raymondclowe/Memory-MCP/discussions)
-- [Specification](SPECIFICATION.md)
+- [GitHub Issues](https://github.com/raymondclowe/Memory-MCP/issues) - Bug reports and feature requests
+- [Discussions](https://github.com/raymondclowe/Memory-MCP/discussions) - Questions and community
+- [Specification](SPECIFICATION.md) - Technical details
 
 ---
 
-**Status**: Active Development  
-**Version**: 1.0 (Specification)  
+**Status**: ✅ Production Ready  
+**Version**: 1.0.0  
 **Last Updated**: December 2024
+
+Built with ❤️ using the Model Context Protocol

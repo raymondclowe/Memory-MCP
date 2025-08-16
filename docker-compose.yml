@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  memory-mcp:
+    build: .
+    ports:
+      - "8080:8080"   # REST API
+      - "7860:7860"   # Gradio admin interface
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - MEMORY_HOST=0.0.0.0
+      - MEMORY_PORT=8080
+      - MEMORY_GRADIO_HOST=0.0.0.0
+      - MEMORY_GRADIO_PORT=7860
+      - MEMORY_DB_PATH=/app/data/memory_graph.db
+      - MEMORY_LOG_LEVEL=INFO
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import asyncio; from memory_core import MemoryCore; asyncio.run(MemoryCore('/app/data/memory_graph.db').get_health_status())"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a reverse proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - memory-mcp
+    restart: unless-stopped
+    profiles: ["with-proxy"]
+
+volumes:
+  memory_data:
+    driver: local

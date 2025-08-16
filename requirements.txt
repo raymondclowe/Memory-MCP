@@ -1,0 +1,29 @@
+# Core MCP SDK
+mcp>=1.0.0
+
+# Web framework for REST API
+fastapi>=0.104.0
+uvicorn>=0.24.0
+
+# Admin interface
+gradio>=4.0.0
+
+# AI/ML for embeddings and semantic analysis
+sentence-transformers>=2.2.0
+openai>=1.0.0
+numpy>=1.24.0
+
+# Utilities
+pydantic>=2.0.0
+asyncio-mqtt>=0.16.0
+python-dotenv>=1.0.0
+aiofiles>=23.0.0
+
+# Logging and monitoring
+structlog>=23.0.0
+
+# Development and testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+mypy>=1.0.0
