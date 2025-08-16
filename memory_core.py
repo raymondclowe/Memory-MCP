@@ -266,48 +266,12 @@ class MemoryDatabase:
         except Exception as e:
             self.logger.error("Failed to get memory stats", error=str(e))
             raise
-
-
-class MemoryCore:
-    """Core memory management system."""
-    
-    def __init__(self, db_path: str = "memory_graph.db"):
-        self.db = MemoryDatabase(db_path)
-        self.logger = structlog.get_logger().bind(component="memory_core")
-        
-    async def store_memory(self, content: str, context: Optional[Dict[str, Any]] = None) -> str:
-        """Store a new memory with optional context."""
-        memory = MemoryNode(
-            content=content,
-            context=context or {}
-        )
-        
-        memory_id = await self.db.store_memory(memory)
-        self.logger.info("Memory stored via core", memory_id=memory_id)
-        return memory_id
-    
-    async def query_memories(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Query memories and return formatted results."""
-        memories = await self.db.search_memories(query, limit)
-        
-        results = []
-        for memory in memories:
-            results.append({
-                "id": memory.id,
-                "content": memory.content,
-                "context": memory.context,
-                "created_at": memory.created_at.isoformat(),
-                "priority_score": memory.priority_score,
-                "node_type": memory.node_type
-            })
-        
-        return results
     
     async def search_by_context(self, context_filter: Dict[str, Any], limit: int = 10) -> List[Dict[str, Any]]:
         """Search memories by context criteria."""
         await self._ensure_initialized()
         try:
-            async with aiosqlite.connect(self.db.db_path) as conn:
+            async with aiosqlite.connect(self.db_path) as conn:
                 cursor = await conn.cursor()
                 
                 # Build dynamic WHERE clause for JSON context search
@@ -346,6 +310,42 @@ class MemoryCore:
         except Exception as e:
             self.logger.error("Failed to search by context", context_filter=context_filter, error=str(e))
             raise
+
+
+class MemoryCore:
+    """Core memory management system."""
+    
+    def __init__(self, db_path: str = "memory_graph.db"):
+        self.db = MemoryDatabase(db_path)
+        self.logger = structlog.get_logger().bind(component="memory_core")
+        
+    async def store_memory(self, content: str, context: Optional[Dict[str, Any]] = None) -> str:
+        """Store a new memory with optional context."""
+        memory = MemoryNode(
+            content=content,
+            context=context or {}
+        )
+        
+        memory_id = await self.db.store_memory(memory)
+        self.logger.info("Memory stored via core", memory_id=memory_id)
+        return memory_id
+    
+    async def query_memories(self, query: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Query memories and return formatted results."""
+        memories = await self.db.search_memories(query, limit)
+        
+        results = []
+        for memory in memories:
+            results.append({
+                "id": memory.id,
+                "content": memory.content,
+                "context": memory.context,
+                "created_at": memory.created_at.isoformat(),
+                "priority_score": memory.priority_score,
+                "node_type": memory.node_type
+            })
+        
+        return results
     
     async def recall_memory(self, memory_id: str) -> Optional[Dict[str, Any]]:
         """Recall a specific memory by ID."""
@@ -364,6 +364,53 @@ class MemoryCore:
             }
         
         return None
+    
+    async def search_by_context(self, context_filter: Dict[str, Any], limit: int = 10) -> List[Dict[str, Any]]:
+        """Search memories by context criteria."""
+        return await self.db.search_by_context(context_filter, limit)
+    
+    async def exhaustive_search(self, query: str, limit: int = 50) -> List[Dict[str, Any]]:
+        """Perform comprehensive search across all memories."""
+        # This is similar to query_memories but with a higher default limit
+        # and potentially more comprehensive searching
+        return await self.query_memories(query, limit)
+    
+    async def get_knowledge_overview(self) -> Dict[str, Any]:
+        """Get an overview of the knowledge base."""
+        stats = await self.db.get_memory_stats()
+        
+        # Get recent memories
+        recent_memories = await self.query_memories("", limit=5)
+        
+        # Get memory types distribution
+        try:
+            async with aiosqlite.connect(self.db.db_path) as conn:
+                cursor = await conn.cursor()
+                await cursor.execute("""
+                    SELECT node_type, COUNT(*) as count 
+                    FROM memory_nodes 
+                    GROUP BY node_type
+                """)
+                type_distribution = {}
+                async for row in cursor:
+                    type_distribution[row[0]] = row[1]
+        except Exception:
+            type_distribution = {}
+        
+        return {
+            "total_memories": stats["memory_count"],
+            "total_relationships": stats["relationship_count"],
+            "graph_size": stats["graph_size"],
+            "memory_types": type_distribution,
+            "recent_memories": [
+                {
+                    "id": mem["id"],
+                    "content": mem["content"][:100] + "..." if len(mem["content"]) > 100 else mem["content"],
+                    "created_at": mem["created_at"]
+                }
+                for mem in recent_memories[:3]
+            ]
+        }
     
     async def get_health_status(self) -> Dict[str, Any]:
         """Get system health and statistics."""

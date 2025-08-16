@@ -46,7 +46,7 @@ class GradioAdminInterface:
         """Store a memory (sync wrapper)."""
         return asyncio.run(self.store_memory_async(content, context_json))
     
-    async def search_memories_async(self, query: str, limit: int) -> Tuple[str, str]:
+    async def search_memories_async(self, query: str, limit: int) -> Tuple[str, pd.DataFrame]:
         """Search memories asynchronously."""
         try:
             memories = await self.memory_core.query_memories(query, limit)
@@ -69,12 +69,12 @@ class GradioAdminInterface:
                 })
             
             df = pd.DataFrame(table_data)
-            return result_text, df.to_string(index=False)
+            return result_text, df
         
         except Exception as e:
-            return f"❌ Error searching memories: {str(e)}", ""
+            return f"❌ Error searching memories: {str(e)}", pd.DataFrame()
     
-    def search_memories(self, query: str, limit: int) -> Tuple[str, str]:
+    def search_memories(self, query: str, limit: int) -> Tuple[str, pd.DataFrame]:
         """Search memories (sync wrapper)."""
         return asyncio.run(self.search_memories_async(query, limit))
     
@@ -226,10 +226,13 @@ class GradioAdminInterface:
                                 interactive=False
                             )
                     
-                    search_table = gr.Textbox(
+                    search_table = gr.DataFrame(
                         label="Results Table",
-                        lines=10,
-                        interactive=False
+                        headers=["ID", "Content", "Priority", "Type", "Created"],
+                        datatype=["str", "str", "number", "str", "str"],
+                        interactive=False,
+                        wrap=True,
+                        max_rows=20
                     )
                     
                     search_btn.click(
